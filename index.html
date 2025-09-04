@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mô phỏng gieo đồng xu – Không gian mẫu</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #0f172a;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --tile: #111827;
+      --tile2: #0e152a;
+      --ring: rgba(56,189,248,.35);
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1000px 600px at 10% 0%, #0b1228 0%, var(--bg) 50%, #090e1b 100%);
+      color: var(--text);
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: clamp(20px, 3.6vw, 34px); line-height: 1.15; margin: 0 0 16px; }
+    p.lead { color: var(--muted); margin-top: 4px; }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(148,163,184,0.18);
+      border-radius: 16px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+    }
+
+    .controls { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 720px){ .controls{ grid-template-columns: 1.1fr .9fr 1fr 1fr 1fr; } }
+
+    label { font-size: 14px; color: var(--muted); }
+    .field { display: flex; gap: 8px; align-items: center; }
+    input[type="number"], input[type="text"], select { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.25); background: #0c1426; color: var(--text); outline: none; }
+    input[type="text"]::placeholder{ color: #6b7280 }
+
+    .btn { padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(56,189,248,0.35); background: linear-gradient(180deg, #0b1a2f, #091324); color: #dbeafe; font-weight: 600; cursor: pointer; letter-spacing: .2px; box-shadow: 0 6px 20px rgba(56,189,248,.15) inset, 0 2px 10px rgba(2,6,23,.4);
+      transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease; }
+    .btn:hover{ border-color: rgba(56,189,248,.6); box-shadow: 0 8px 28px rgba(56,189,248,.22) inset, 0 6px 16px rgba(2,6,23,.5); }
+    .btn:active{ transform: translateY(1px); }
+
+    .row { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+    @media (min-width: 900px){ .row { grid-template-columns: 1fr 1fr; } }
+
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .stat { background: linear-gradient(180deg, rgba(56,189,248,.08), rgba(56,189,248,.02)); border: 1px solid rgba(56,189,248,.2); border-radius: 14px; padding: 12px; text-align: center; }
+    .stat .kpi { font-size: clamp(18px,3vw,24px); font-weight: 800; }
+    .stat .lbl { font-size: 12px; color: var(--muted); }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .tile { background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00)); border: 1px solid rgba(148,163,184,.18); border-radius: 16px; padding: 10px; position: relative; overflow: hidden; }
+    .tile:hover{ box-shadow: 0 10px 35px rgba(0,0,0,.35); border-color: rgba(148,163,184,.35); }
+    .tile .seq { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: center; padding: 8px 0; }
+    .tile .label { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-weight: 700; letter-spacing: .6px; text-align: center; color: #a5b4fc; }
+
+    .legend { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+    .legend .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25); }
+    .legend .dot { width: 16px; height: 16px; border-radius: 999px; box-shadow: 0 2px 0 rgba(0,0,0,.3) inset; }
+    .dot.h { background: radial-gradient(60% 60% at 35% 30%, #ffec8a, #caa32a 70%), radial-gradient(80% 80% at 60% 60%, rgba(255,255,255,.6), rgba(0,0,0,.15)); border: 1px solid #d4b645; }
+    .dot.t { background: radial-gradient(60% 60% at 35% 30%, #d1d5db, #4b5563 70%), radial-gradient(80% 80% at 60% 60%, rgba(255,255,255,.6), rgba(0,0,0,.15)); border: 1px solid #6b7280; }
+
+    .coin { width: 46px; height: 46px; display:inline-block; }
+
+    .grid-info { font-size: 13px; color: var(--muted); margin: 8px 0 2px; }
+
+    .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 16px; }
+    .inline-note { color: #93c5fd; font-size: 12px; }
+
+    @keyframes dropBounceFlip {
+      0% { transform: translateY(-80px) rotateY(0deg); opacity: 0; }
+      60% { transform: translateY(10px) rotateY(180deg); opacity: 1; }
+      80% { transform: translateY(-5px) rotateY(270deg); }
+      100% { transform: translateY(0) rotateY(360deg); }
+    }
+    .coin.dropBounceFlip { animation: dropBounceFlip 0.8s ease forwards; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Gieo đồng xu – Không gian mẫu với ảnh trực quan</h1>
+  <p class="lead">Chọn số đồng xu <em>n</em>, xem toàn bộ không gian mẫu (2<sup>n</sup> kết quả) dưới dạng chuỗi ảnh <strong>Ngửa (H)</strong> / <strong>Sấp (T)</strong>, hoặc gieo ngẫu nhiên để minh hoạ.</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label for="n">Số đồng xu (n)</label>
+        <input id="n" type="number" min="1" max="12" value="3" />
+      </div>
+      <div class="field">
+        <label for="order">Thứ tự hiển thị</label>
+        <select id="order">
+          <option value="lex">Từ điển (H/T)</option>
+          <option value="weight">Theo số lượng H giảm dần</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="labels">Nhãn H/T</label>
+        <select id="labels">
+          <option value="HT">H/T</option>
+          <option value="NS">Ngửa/Sấp</option>
+        </select>
+      </div>
+      <button class="btn" id="btnSpace">Hiện không gian mẫu</button>
+      <button class="btn" id="btnSim">Gieo ngẫu nhiên</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="kpi" id="kpiN">3</div><div class="lbl">Số đồng xu n</div></div>
+      <div class="stat"><div class="kpi" id="kpiOmega">8</div><div class="lbl">|Ω| = 2<sup>n</sup> kết quả</div></div>
+      <div class="stat"><div class="kpi" id="kpiExample">1/8</div><div class="lbl">Xác suất mỗi kết quả</div></div>
+    </div>
+
+    <div class="grid-info">
+      <span class="legend">
+        <span class="badge"><span class="dot h"></span> Ngửa (H)</span>
+        <span class="badge"><span class="dot t"></span> Sấp (T)</span>
+      </span>
+      <span class="inline-note">Gợi ý: tăng n lên 4–8 để thấy cấu trúc tổ hợp.</span>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <div class="panel">
+      <h3 style="margin-top:0">Không gian mẫu Ω</h3>
+      <div id="space" class="tiles"></div>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Gieo ngẫu nhiên</h3>
+      <div id="randomResult" class="tiles"></div>
+    </div>
+  </div>
+
+  <p class="footer">Thiết kế một file – chạy offline. Có thể dùng trình chiếu lớp học.</p>
+</div>
+
+<!-- Coin templates -->
+<svg id="tpl-head" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="coin" style="display:none">
+  <defs>
+    <radialGradient id="g1" cx="35%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#fff3a3"/>
+      <stop offset="65%" stop-color="#d9b949"/>
+      <stop offset="100%" stop-color="#9a7b19"/>
+    </radialGradient>
+    <linearGradient id="rim1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#f6e089"/>
+      <stop offset="100%" stop-color="#8f6a11"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+  <circle cx="50" cy="50" r="44" fill="url(#g1)" stroke="url(#rim1)" stroke-width="6" filter="url(#shadow)"/>
+  <circle cx="50" cy="50" r="28" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
+  <text x="50" y="58" text-anchor="middle" font-size="36" font-weight="900" fill="#4b2e03">H</text>
+</svg>
+
+<svg id="tpl-tail" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="coin" style="display:none">
+  <defs>
+    <radialGradient id="g2" cx="35%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="65%" stop-color="#9aa1a9"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </radialGradient>
+    <linearGradient id="rim2" x1="0" x2="1">
+      <stop offset="0%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="44" fill="url(#g2)" stroke="url(#rim2)" stroke-width="6" />
+  <g transform="translate(50 50)">
+    <circle r="28" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="2" stroke-dasharray="2 3"/>
+    <path d="M-10 0h20" stroke="#111827" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="0" cy="-13" r="5" fill="#0f172a"/>
+    <circle cx="0" cy="13" r="5" fill="#0f172a"/>
+  </g>
+</svg>
+
+<!-- Coin sound -->
+<audio id="coinSound" preload="auto">
+  <source src="data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAA..." type="audio/mpeg">
+</audio>
+
+<script>
+  const $ = (sel, el=document) => el.querySelector(sel);
+  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+  const nInput = $('#n');
+  const orderSel = $('#order');
+  const labelsSel = $('#labels');
+  const btnSpace = $('#btnSpace');
+  const btnSim = $('#btnSim');
+  const elSpace = $('#space');
+  const elRandom = $('#randomResult');
+  const kpiN = $('#kpiN');
+  const kpiOmega = $('#kpiOmega');
+  const kpiExample = $('#kpiExample');
+  const sound = $('#coinSound');
+
+  function coinSVG(type){
+    const tpl = type === 'H' ? $('#tpl-head') : $('#tpl-tail');
+    return tpl.outerHTML.replace('style="display:none"','');
+  }
+
+  function product(arrays){
+    return arrays.reduce((acc, cur)=>{
+      const out=[]; for(const a of acc){ for(const b of cur){ out.push(a.concat([b])); } } return out;
+    }, [[]]);
+  }
+
+  function sampleSpace(n){
+    const axes = Array.from({length:n}, ()=> ['H','T']);
+    return product(axes);
+  }
+
+  function renderTiles(el, sequences, labelMode='HT'){
+    el.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    sequences.forEach(seq=>{
+      const tile = document.createElement('div'); tile.className='tile';
+      const seqWrap = document.createElement('div'); seqWrap.className='seq';
+      for(const c of seq){ seqWrap.insertAdjacentHTML('beforeend', coinSVG(c)); }
+      const lb = document.createElement('div'); lb.className='label';
+      const asText = seq.join('');
+      if(labelMode==='NS'){
+        lb.textContent = asText.replaceAll('H','Ngửa ').replaceAll('T','Sấp ').trim();
+      } else { lb.textContent = asText; }
+      tile.appendChild(seqWrap); tile.appendChild(lb); frag.appendChild(tile);
+    });
+    el.appendChild(frag);
+  }
+
+  function sortSequences(seqs, mode){
+    if(mode==='weight'){
+      return seqs.slice().sort((a,b)=>{
+        const wa = a.filter(x=>x==='H').length;
+        const wb = b.filter(x=>x==='H').length;
+        if(wb!==wa) return wb-wa;
+        return a.join('').localeCompare(b.join(''));
+      });
+    }
+    return seqs.slice().sort((a,b)=>{
+      const aa = a.map(x=>x==='H'?0:1).join('');
+      const bb = b.map(x=>x==='H'?0:1).join('');
+      return aa.localeCompare(bb);
+    });
+  }
+
+  function updateKPIs(n){
+    kpiN.textContent = n;
+    const omega = 2 ** n; kpiOmega.textContent = omega.toLocaleString('vi-VN');
+    kpiExample.textContent = `1/${omega}`;
+  }
+
+  function showSpace(){
+    const n = clampN(parseInt(nInput.value||'1',10));
+    updateKPIs(n);
+    const seqs = sampleSpace(n);
+    const sorted = sortSequences(seqs, orderSel.value);
+    renderTiles(elSpace, sorted, labelsSel.value);
+  }
+
+  function simulate(){
+    const n = clampN(parseInt(nInput.value||'1',10));
+    updateKPIs(n);
+    const seq = Array.from({length:n}, ()=> Math.random()<0.5?'H':'T');
+    elRandom.innerHTML = '';
+
+    const tile = document.createElement('div'); tile.className='tile';
+    const seqWrap = document.createElement('div'); seqWrap.className='seq';
+    
+    seq.forEach((c, i) => {
+      const coin = document.createElement('div');
+      coin.innerHTML = coinSVG(c);
+      const coinEl = coin.firstChild;
+      coinEl.classList.add('dropBounceFlip');
+      coinEl.style.animationDelay = `${i*0.15}s`;
+      coinEl.addEventListener('animationend', ()=>{
+        sound.currentTime = 0; sound.play();
+      });
+      seqWrap.appendChild(coinEl);
+    });
+
+    const lb = document.createElement('div'); lb.className='label';
+    const asText = seq.join('');
+    if(labelsSel.value==='NS'){
+      lb.textContent = asText.replaceAll('H','Ngửa ').replaceAll('T','Sấp ').trim();
+    } else { lb.textContent = asText; }
+
+    const prob = document.createElement('div'); prob.className='grid-info';
+    prob.textContent = `Xác suất P = 1/${2**n}`;
+
+    tile.appendChild(seqWrap);
+    tile.appendChild(lb);
+    tile.appendChild(prob);
+    elRandom.appendChild(tile);
+  }
+
+  function clampN(n){ if(Number.isNaN(n)) n=1; if(n<1) n=1; if(n>12) n=12; nInput.value=n; return n; }
+
+  btnSpace.addEventListener('click', showSpace);
+  btnSim.addEventListener('click', simulate);
+  nInput.addEventListener('change', showSpace);
+  orderSel.addEventListener('change', showSpace);
+  labelsSel.addEventListener('change', ()=>{ showSpace(); simulate(); });
+
+  showSpace();
+  simulate();
+</script>
+</body>
+</html>
